@@ -1,0 +1,7 @@
+body{font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;max-width:1080px;margin:0 auto;padding:16px;color:#1f2937}
+header h1{margin:0} nav{margin:16px 0;display:flex;gap:8px;flex-wrap:wrap}
+button{padding:6px 12px;cursor:pointer} input,select,textarea{display:block;margin:6px 0;padding:6px;width:100%;max-width:640px;box-sizing:border-box}
+textarea{min-height:80px} table{width:100%;border-collapse:collapse;margin-top:12px}
+th,td{border:1px solid #ddd;padding:6px;text-align:left;font-size:14px}
+pre{background:#111827;color:#e5e7eb;padding:12px;overflow:auto;white-space:pre-wrap}
+.hidden{display:none} .hint{color:#6b7280;font-size:14px} .row{display:flex;gap:8px;flex-wrap:wrap}
