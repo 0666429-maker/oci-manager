@@ -51,8 +51,14 @@ cp .env.example .env   # 填 OCI 密钥、面板账号，务必改掉默认值
 
 ## 配置说明
 
-- 认证二选一：`.env` 里的 `OCI_USER_OCID / OCI_TENANCY_OCID / OCI_FINGERPRINT /
-  OCI_PRIVATE_KEY_PATH / OCI_REGION`，或标准 `~/.oci/config` 文件。
+- **推荐：网页上传、多密钥管理**：面板顶部点“密钥管理”，填名字、用户
+  OCID、租户 OCID、指纹、区域（可选默认 compartment），选 `.pem` 私钥
+  文件上传保存。能存多条，点“切换到这条”立即生效，不用重启服务；
+  每条的私钥单独存在 VPS 的 `data/keys/` 里（仅自己可读），列表里
+  只显示 OCID 打码后的头尾，不能从网页下载或查看私钥原文。
+- 兼容旧方式：没有激活任何一条网页密钥时，仍按 `.env` 里的
+  `OCI_USER_OCID / OCI_TENANCY_OCID / OCI_FINGERPRINT /
+  OCI_PRIVATE_KEY_PATH / OCI_REGION`，或标准 `~/.oci/config` 文件工作。
 - `OCI_COMPARTMENT_OCID` 是默认 compartment；调用 API 时也可每次传
   `compartment_id` 覆盖。
 - 创建实例前，需先在 OCI 控制台拿到：可用区（availability_domain）、
@@ -97,8 +103,9 @@ git push origin v0.1.0
 wget -O install.sh https://raw.githubusercontent.com/<你的GitHub用户名>/oci-manager/main/install.sh
 bash install.sh <你的GitHub用户名> --systemd
 ```
-4. 之后还是要填一次 `.env` 里的 OCI 密钥（密钥不能进 GitHub，这是
-   安全底线），填完重启服务即可。
+4. 之后不用再改 `.env` 也能配密钥：打开面板点“密钥管理”，网页上传
+   `.pem` 并填好 OCID、指纹、区域就能用（密钥不能进 GitHub，这是
+   安全底线；多条密钥也都在这里统一管理和切换）。
 
 ## Ubuntu VPS 部署（从零开始）
 
@@ -124,7 +131,8 @@ sudo journalctl -u oci-manager -f   # 看日志
 ```
 run.py                  启动入口（--bot / --monitor）
 app/
-  config.py             .env / OCI config 翻译
+  config.py             .env / OCI config 翻译（优先用激活的网页密钥）
+  credentials.py        网页上传的多密钥管理（data/profiles.json + data/keys/*.pem）
   oci_factory.py        OCI 各客户端懒加载（compute / network / blockstorage /
                         identity / object_storage / monitoring / limits）
   api.py                FastAPI Web 面板接口
