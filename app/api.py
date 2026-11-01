@@ -10,12 +10,14 @@ import binascii
 import secrets
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile, WebSocket
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile, WebSocket
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from . import credentials as creds
 from .config import settings
+from .oci_factory import clients
 from .services import identity as identity_svc
 from .services import instances as inst
 from .services import monitoring as mon
@@ -23,7 +25,7 @@ from .services import network as net
 from .services import storage as store
 from .services import volumes as vol
 
-app = FastAPI(title="oci-manager", version="0.1.0")
+app = FastAPI(title="oci-manager", version="0.2.0")
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 
 
@@ -58,7 +60,7 @@ async def _generic_handler(request: Request, exc: Exception):
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "version": "0.1.0", "panel_auth": bool(settings.panel_username)}
+    return {"ok": True, "version": "0.2.0", "panel_auth": bool(settings.panel_username)}
 
 
 # ---------- 实例 ----------
@@ -323,6 +325,57 @@ async def api_upload(bucket_name: str, file: UploadFile = File(...)):
 def api_download(bucket_name: str, object_name: str):
     data = store.download_object(bucket_name, object_name)
     return Response(content=data, media_type="application/octet-stream")
+
+
+# ---------- OCI 密钥管理（网页上传、多条统一管理）----------
+# 私钥只落盘到 data/keys/（chmod 600），绝不经接口回传、下载或进 Git；
+# 列表里只给 OCID 打码后的头尾。所有接口都走面板鉴权。
+@app.get("/api/credentials", dependencies=[Depends(_auth)])
+def api_list_credentials():
+    result = creds.list_profiles()
+    result["env_fallback"] = bool(settings.oci_config()) and not result["active_id"]
+    return result
+
+
+@app.post("/api/credentials", dependencies=[Depends(_auth)])
+async def api_upload_credential(
+    name: str = Form(...),
+    user_ocid: str = Form(...),
+    tenancy_ocid: str = Form(...),
+    fingerprint: str = Form(...),
+    region: str = Form(...),
+    compartment_ocid: str = Form(""),
+    key_file: UploadFile = File(...),
+):
+    data = await key_file.read()
+    profile = creds.create_profile(
+        name, user_ocid, tenancy_ocid, fingerprint, region,
+        compartment_ocid, data,
+    )
+    if profile["is_active"]:
+        clients().reset()
+    return profile
+
+
+@app.post("/api/credentials/{profile_id}/activate", dependencies=[Depends(_auth)])
+def api_activate_credential(profile_id: str):
+    profile = creds.set_active(profile_id)
+    clients().reset()
+    return profile
+
+
+@app.post("/api/credentials/{profile_id}/test", dependencies=[Depends(_auth)])
+def api_test_credential(profile_id: str):
+    return creds.test_profile(profile_id)
+
+
+@app.delete("/api/credentials/{profile_id}", dependencies=[Depends(_auth)])
+def api_delete_credential(profile_id: str):
+    was_active = (creds.list_profiles()["active_id"] == profile_id)
+    creds.delete_profile(profile_id)
+    if was_active:
+        clients().reset()
+    return {"ok": True}
 
 
 # ---------- Web SSH（交互终端，见 ssh_terminal.py）----------
