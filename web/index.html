@@ -30,26 +30,31 @@
 
 <section id="tab-instances" class="tab">
   <div class="row">
+    <label>Compartment <select id="compFilter"><option value="">全部（自动获取）</option></select></label>
     <button onclick="loadInstances()">刷新实例</button>
     <button onclick="a1check()">A1 免费额度体检</button>
     <button onclick="syncHosts()">从 OCI 同步主机到 SSH 列表</button>
   </div>
+  <p class="hint">不选 compartment 时自动从租户获取全部 compartment 再汇总实例，不用手动填 OCID；选了某一项则只查那一个。</p>
   <pre id="a1Result"></pre>
-  <table><thead><tr><th>名称</th><th>Shape</th><th>状态</th><th>操作</th></tr></thead>
+  <table><thead><tr><th>名称</th><th>Shape</th><th>状态</th><th>Compartment</th><th>操作</th></tr></thead>
   <tbody id="instanceRows"></tbody></table>
 </section>
 
 <section id="tab-create" class="tab hidden">
   <h2>创建实例</h2>
-  <label>快捷预设 <select id="preset"><option value="">自定义</option><option value="amd_micro">AMD 微型</option><option value="arm_a1">ARM A1（4核24G）</option></select></label>
+  <label>Compartment <select id="createCompartment"><option value="">自动加载中…</option></select></label>
+  <label>快捷预设 <select id="preset"><option value="">自定义</option><option value="amd_micro">AMD 微型</option><option value="arm_a1">ARM A1（4核24G）</option><option value="arm_a1_2c12g">ARM A1（2核12G）</option></select></label>
   <label>可用区域名 <input id="ad" placeholder="如 abcd:AP-SINGAPORE-1-AD-1"></label>
   <label>镜像 OCID <input id="imageId" placeholder="ocid1.image..."></label>
   <label>子网 OCID <input id="subnetId" placeholder="ocid1.subnet..."></label>
   <label>名称 <input id="displayName" value="oci-manager-instance"></label>
   <label>SSH 公钥 <textarea id="sshKey" placeholder="ssh-rsa ..."></textarea></label>
+  <label><input id="enableRootPass" type="checkbox"> 开启 root 密码登录</label>
+  <label>root 密码（至少 8 位，仅本次创建用，创建后不存面板） <input id="rootPass" type="password" placeholder="勾选上面一项后填写"></label>
   <button onclick="createInstance()">创建</button>
   <pre id="createResult"></pre>
-  <p class="hint">创建前请先在 OCI 控制台确认镜像、子网、可用区与免费额度；改 Shape 前需先关机。</p>
+  <p class="hint">创建前请先在 OCI 控制台确认镜像、子网、可用区与免费额度；改 Shape 前需先关机。2核12G 是 A1 免费额度的一半，还能再开一台 2核12G。root 密码登录会通过 cloud-init 开启 SSH 密码登录并允许 root 登录，密码只算哈希、不存明文；创建成功后请用强密码，公网暴露的 root 密码登录本身有被爆破的风险，能用密钥登录时优先用密钥。</p>
 </section>
 
 <section id="tab-network" class="tab hidden">
