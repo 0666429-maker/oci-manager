@@ -7,6 +7,7 @@ function authHeaders() {
 function saveAuth() {
   sessionStorage.setItem('panelUser', document.getElementById('panelUser').value);
   sessionStorage.setItem('panelPass', document.getElementById('panelPass').value);
+  loadCompartments();
   loadInstances();
 }
 async function api(path, method = 'GET', body = null) {
@@ -25,6 +26,20 @@ function showTab(name) {
   document.querySelectorAll('.tab').forEach(el => el.classList.add('hidden'));
   document.getElementById('tab-' + name).classList.remove('hidden');
   if (name === 'credentials') loadCredentials();
+  if (name === 'instances' || name === 'create') loadCompartments();
+}
+async function loadCompartments() {
+  try {
+    const comps = await api('/api/compartments');
+    const filter = document.getElementById('compFilter');
+    const curFilter = filter.value;
+    filter.innerHTML = '<option value="">全部（自动获取）</option>' + comps.map(c => `<option value="${esc(c.id)}">${esc(c.name || c.id)}</option>`).join('');
+    if ([...filter.options].some(o => o.value === curFilter)) filter.value = curFilter;
+    const createSel = document.getElementById('createCompartment');
+    const curCreate = createSel.value;
+    createSel.innerHTML = comps.map(c => `<option value="${esc(c.id)}">${esc(c.name || c.id)}</option>`).join('');
+    if ([...createSel.options].some(o => o.value === curCreate)) createSel.value = curCreate;
+  } catch (e) { /* 没权限列 compartment 时，实例列表仍可走自动获取并在那里报错 */ }
 }
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -81,9 +96,12 @@ async function deleteCredential(id, name) {
 }
 async function loadInstances() {
   try {
-    const items = await api('/api/instances');
+    const comp = document.getElementById('compFilter').value;
+    const path = comp ? '/api/instances?compartment_id=' + encodeURIComponent(comp) : '/api/instances';
+    const items = await api(path);
     document.getElementById('instanceRows').innerHTML = items.map(it => `
       <tr><td>${it.display_name || ''}</td><td>${it.shape || ''}</td><td>${it.lifecycle_state || ''}</td>
+      <td title="${it.compartment_id || ''}">${(it.compartment_id || '').slice(-8)}</td>
       <td>
         <button onclick="doAction('${it.id}','START')">开机</button>
         <button onclick="doAction('${it.id}','STOP')">关机</button>
@@ -113,13 +131,20 @@ async function syncHosts() {
   if (hosts[0]) document.getElementById('sshHost').value = hosts[0].public_ip || '';
 }
 async function createInstance() {
+  const rootPass = document.getElementById('enableRootPass').checked ? document.getElementById('rootPass').value : '';
+  if (document.getElementById('enableRootPass').checked && rootPass.length < 8) {
+    document.getElementById('createResult').textContent = '错误：root 密码至少 8 位。';
+    return;
+  }
   const body = {
+    compartment_id: document.getElementById('createCompartment').value || null,
     availability_domain: document.getElementById('ad').value,
     image_id: document.getElementById('imageId').value,
     subnet_id: document.getElementById('subnetId').value,
     display_name: document.getElementById('displayName').value,
     ssh_authorized_keys: document.getElementById('sshKey').value,
     preset: document.getElementById('preset').value || null,
+    root_password: rootPass || null,
   };
   try {
     const r = await api('/api/instances', 'POST', body);
