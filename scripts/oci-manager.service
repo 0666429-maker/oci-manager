@@ -1,0 +1,17 @@
+[Unit]
+Description=oci-manager (OCI only)
+After=network.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__WORKDIR__
+# __EXTRA_ARGS__ 由 install-ubuntu.sh 替换为 --bot / --monitor（可为空）
+ExecStart=__WORKDIR__/.venv/bin/python run.py __EXTRA_ARGS__
+Restart=always
+RestartSec=5
+# 只给服务读项目目录和 ~/.oci 私钥的权限基线，不写死密钥路径
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
