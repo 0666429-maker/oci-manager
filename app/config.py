@@ -38,9 +38,17 @@ class Settings:
     def oci_config(self) -> dict:
         """返回可直接传给 oci 客户端的 config dict。
 
-        环境变量齐全时直接用环境变量；否则返回空 dict，让调用方
-        用 oci.config.from_file() 读 ~/.oci/config。
+        优先级：网页上传并激活的 profile > 环境变量；两者都没有时
+        返回空 dict，让调用方用 oci.config.from_file() 读 ~/.oci/config。
         """
+        try:
+            from .credentials import active_oci_config
+
+            profile_config = active_oci_config()
+        except Exception:
+            profile_config = {}
+        if profile_config:
+            return profile_config
         user = _env("OCI_USER_OCID")
         tenancy = _env("OCI_TENANCY_OCID")
         fingerprint = _env("OCI_FINGERPRINT")
