@@ -1,0 +1,10 @@
+.env
+.venv/
+*.zip
+__pycache__/
+*.pyc
+*.pem
+*.key
+oci-manager.db
+*.log
+.DS_Store
