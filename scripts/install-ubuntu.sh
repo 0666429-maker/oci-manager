@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Ubuntu VPS 一键安装 oci-manager（不含 OCI 密钥配置，密钥仍需你手动填 .env）。
+# Ubuntu VPS 一键安装 oci-manager（OCI 密钥不用填 .env：装好后在面板“密钥管理”里网页上传即可；.env 里仍需改面板密码）。
 #
 # 用法（在项目根目录 oci-manager 里执行）：
 #   bash scripts/install-ubuntu.sh                # 只装依赖 + 建 venv，不设开机自启
@@ -7,7 +7,7 @@
 #   bash scripts/install-ubuntu.sh --systemd --bot --monitor
 #                                               # 自启时同时启动 Telegram Bot 和监控
 #
-# 注意：脚本不会覆盖已有的 .env；第一次运行后请手动编辑 .env 填 OCI 密钥。
+# 注意：脚本不会覆盖已有的 .env；第一次运行后请手动编辑 .env 改面板密码，OCI 密钥改在面板“密钥管理”里网页上传。
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -53,7 +53,7 @@ fi
 echo "==> 3. 生成配置文件（已有 .env 则不覆盖）"
 if [ ! -f ".env" ]; then
   cp .env.example .env
-  echo "已生成 .env，请用 nano .env 填好 OCI 密钥和面板账号后再启动。"
+  echo "已生成 .env，请用 nano .env 改好面板账号密码后再启动；OCI 密钥在面板“密钥管理”里网页上传。"
 else
   echo ".env 已存在，未覆盖。"
 fi
