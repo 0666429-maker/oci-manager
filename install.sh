@@ -56,4 +56,4 @@ fi
 cd "$HOME/oci-manager"
 echo "==> 运行 Ubuntu 安装脚本"
 bash scripts/install-ubuntu.sh "$@"
-echo "==> 完成。下一步：nano .env 填 OCI 密钥，然后 .venv/bin/python run.py 试跑。"
+echo "==> 完成。下一步：nano .env 改面板密码，启动后在面板“密钥管理”里网页上传 OCI 密钥；或直接 .venv/bin/python run.py 试跑。"
