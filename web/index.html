@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>oci-manager · 仅 OCI 管理面板</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <h1>oci-manager</h1>
+  <p>仅管理 Oracle Cloud（OCI）· 实例 / IP / 磁盘 / 用户 / 对象存储 / 监控</p>
+  <div class="auth">
+    <input id="panelUser" placeholder="面板账号">
+    <input id="panelPass" type="password" placeholder="面板密码">
+    <button onclick="saveAuth()">保存登录</button>
+    <span id="health"></span>
+  </div>
+</header>
+
+<nav>
+  <button onclick="showTab('instances')">实例</button>
+  <button onclick="showTab('create')">创建实例</button>
+  <button onclick="showTab('network')">IP / 网络</button>
+  <button onclick="showTab('volumes')">磁盘</button>
+  <button onclick="showTab('storage')">对象存储</button>
+  <button onclick="showTab('ssh')">Web SSH</button>
+</nav>
+
+<section id="tab-instances" class="tab">
+  <div class="row">
+    <button onclick="loadInstances()">刷新实例</button>
+    <button onclick="a1check()">A1 免费额度体检</button>
+    <button onclick="syncHosts()">从 OCI 同步主机到 SSH 列表</button>
+  </div>
+  <pre id="a1Result"></pre>
+  <table><thead><tr><th>名称</th><th>Shape</th><th>状态</th><th>操作</th></tr></thead>
+  <tbody id="instanceRows"></tbody></table>
+</section>
+
+<section id="tab-create" class="tab hidden">
+  <h2>创建实例</h2>
+  <label>快捷预设 <select id="preset"><option value="">自定义</option><option value="amd_micro">AMD 微型</option><option value="arm_a1">ARM A1（4核24G）</option></select></label>
+  <label>可用区域名 <input id="ad" placeholder="如 abcd:AP-SINGAPORE-1-AD-1"></label>
+  <label>镜像 OCID <input id="imageId" placeholder="ocid1.image..."></label>
+  <label>子网 OCID <input id="subnetId" placeholder="ocid1.subnet..."></label>
+  <label>名称 <input id="displayName" value="oci-manager-instance"></label>
+  <label>SSH 公钥 <textarea id="sshKey" placeholder="ssh-rsa ..."></textarea></label>
+  <button onclick="createInstance()">创建</button>
+  <pre id="createResult"></pre>
+  <p class="hint">创建前请先在 OCI 控制台确认镜像、子网、可用区与免费额度；改 Shape 前需先关机。</p>
+</section>
+
+<section id="tab-network" class="tab hidden">
+  <button onclick="loadIps()">刷新公网 IP</button>
+  <pre id="ipResult"></pre>
+</section>
+
+<section id="tab-volumes" class="tab hidden">
+  <button onclick="loadVolumes()">刷新磁盘</button>
+  <pre id="volResult"></pre>
+</section>
+
+<section id="tab-storage" class="tab hidden">
+  <button onclick="loadBuckets()">刷新 Bucket</button>
+  <pre id="bucketResult"></pre>
+</section>
+
+<section id="tab-ssh" class="tab hidden">
+  <h2>Web SSH</h2>
+  <p class="hint">先点“从 OCI 同步主机”，再填主机 IP 连接。私钥路径指本程序所在机器上的私钥文件，不经过浏览器上传。</p>
+  <label>主机 IP <input id="sshHost"></label>
+  <label>用户名 <input id="sshUser" value="opc"></label>
+  <label>密码（与私钥二选一） <input id="sshPass" type="password"></label>
+  <label>私钥路径 <input id="sshKeyPath" placeholder="~/.ssh/id_rsa"></label>
+  <button onclick="connectSsh()">连接</button>
+  <pre id="sshOut"></pre>
+  <input id="sshInput" placeholder="输入命令后回车发送" onkeydown="if(event.key==='Enter')sendSsh()">
+</section>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
