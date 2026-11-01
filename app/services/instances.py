@@ -8,7 +8,7 @@ from __future__ import annotations
 from ..oci_factory import clients
 from ..utils import paginate, require_confirm, to_dict
 
-# R-Bot 面板里的两档快捷开机预设（仅作默认值，用户可在调用时覆盖）
+# R-Bot 面板里的快捷开机预设（仅作默认值，用户可在调用时覆盖）
 PRESETS = {
     "amd_micro": {
         "shape": "VM.Standard.E2.1.Micro",
@@ -22,15 +22,55 @@ PRESETS = {
         "memory_in_gbs": 24,
         "note": "ARM A1 免费额度上限：4 OCPU / 24GB（按租户汇总计算）",
     },
+    "arm_a1_2c12g": {
+        "shape": "VM.Standard.A1.Flex",
+        "ocpus": 2,
+        "memory_in_gbs": 12,
+        "note": "ARM A1：2 OCPU / 12GB（免费额度的一半，还能再开一台 2核12G）",
+    },
 }
 
 
+def build_root_password_user_data(root_password: str) -> str:
+    """给 root 密码登录生成 cloud-init user_data（base64）。
+
+    密码本身不以明文进实例元数据：先在服务端算出 SHA-512 哈希，
+    再由 cloud-init 写入 root 账号并开启 SSH 密码登录、允许 root 登录。
+    生成后原始密码即被丢弃，不存在面板或服务端任何文件里。
+    """
+    import base64
+    import crypt
+
+    if len(root_password) < 8:
+        raise ValueError("root 密码至少 8 位，请换一个更长的密码")
+    hashed = crypt.crypt(root_password, crypt.mksalt(crypt.METHOD_SHA512))
+    cloud_config = f"""#cloud-config
+ssh_pwauth: true
+users:
+  - name: root
+    lock_passwd: false
+    hashed_passwd: '{hashed}'
+runcmd:
+  - |
+    sed -i -e 's/^#*PermitRootLogin.*/PermitRootLogin yes/' -e 's/^#*PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+    grep -q '^PermitRootLogin' /etc/ssh/sshd_config || echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config
+    grep -q '^PasswordAuthentication' /etc/ssh/sshd_config || echo 'PasswordAuthentication yes' >> /etc/ssh/sshd_config
+    systemctl restart sshd 2>/dev/null || systemctl restart ssh 2>/dev/null || service ssh restart 2>/dev/null || true
+"""
+    return base64.b64encode(cloud_config.encode("utf-8")).decode("ascii")
+
+
 def list_instances(compartment_id=None, lifecycle_state=None):
+    """列出实例：不传 compartment 时自动获取全部 compartment 再汇总，
+    不用手动填 compartment OCID；显式传值或配了默认值时只查那一个。"""
     c = clients()
-    kwargs = {"compartment_id": c.compartment(compartment_id)}
-    if lifecycle_state:
-        kwargs["lifecycle_state"] = lifecycle_state
-    return [to_dict(x) for x in paginate(c.compute.list_instances, **kwargs)]
+    out = []
+    for cid in c.compartment_ids_for_listing(compartment_id):
+        kwargs = {"compartment_id": cid}
+        if lifecycle_state:
+            kwargs["lifecycle_state"] = lifecycle_state
+        out.extend(to_dict(x) for x in paginate(c.compute.list_instances, **kwargs))
+    return out
 
 
 def get_instance(instance_id: str):
@@ -92,8 +132,11 @@ def launch_instance(
     ssh_authorized_keys: str = "",
     boot_volume_size_in_gbs: int | None = None,
     preset: str | None = None,
+    root_password: str | None = None,
 ):
-    """创建实例。传 preset='amd_micro' 或 'arm_a1' 可一键套用快捷预设。"""
+    """创建实例。传 preset 可一键套用快捷预设（含 arm_a1_2c12g）；
+    传 root_password 则通过 cloud-init 开启 root 密码登录（见
+    build_root_password_user_data，密码只算哈希、不存明文）。"""
     import oci  # type: ignore
 
     if preset and preset in PRESETS:
@@ -112,6 +155,8 @@ def launch_instance(
     metadata = {}
     if ssh_authorized_keys:
         metadata["ssh_authorized_keys"] = ssh_authorized_keys
+    if root_password:
+        metadata["user_data"] = build_root_password_user_data(root_password)
     details = oci.core.models.LaunchInstanceDetails(
         compartment_id=clients().compartment(compartment_id),
         availability_domain=availability_domain,
