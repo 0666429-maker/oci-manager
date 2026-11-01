@@ -24,6 +24,60 @@ async function api(path, method = 'GET', body = null) {
 function showTab(name) {
   document.querySelectorAll('.tab').forEach(el => el.classList.add('hidden'));
   document.getElementById('tab-' + name).classList.remove('hidden');
+  if (name === 'credentials') loadCredentials();
+}
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+async function loadCredentials() {
+  try {
+    const r = await api('/api/credentials');
+    document.getElementById('credRows').innerHTML = r.profiles.map(p => `
+      <tr><td>${esc(p.name)}</td><td>${esc(p.region)}</td><td>${esc(p.user_ocid)}</td><td>${esc(p.fingerprint)}</td>
+      <td>${p.is_active ? '当前生效' : (p.has_key ? '已保存' : '私钥缺失')}</td>
+      <td>
+        ${p.is_active ? '' : `<button onclick="activateCredential('${p.id}')">切换到这条</button>`}
+        <button onclick="testCredential('${p.id}')">测试</button>
+        <button onclick="deleteCredential('${p.id}', '${esc(p.name)}')">删除</button>
+      </td></tr>`).join('') || '<tr><td colspan="6">还没有保存的密钥，先在上面上传一条。</td></tr>';
+    if (!r.active_id) document.getElementById('credResult').textContent = '当前没有激活的密钥，面板按原来的 .env / ~/.oci/config 工作。';
+  } catch (e) { document.getElementById('credResult').textContent = '错误：' + e.message; }
+}
+async function uploadCredential() {
+  const file = document.getElementById('credKeyFile').files[0];
+  if (!file) { document.getElementById('credResult').textContent = '请先选私钥文件（.pem）。'; return; }
+  const fd = new FormData();
+  fd.append('name', document.getElementById('credName').value);
+  fd.append('user_ocid', document.getElementById('credUser').value);
+  fd.append('tenancy_ocid', document.getElementById('credTenancy').value);
+  fd.append('fingerprint', document.getElementById('credFingerprint').value);
+  fd.append('region', document.getElementById('credRegion').value);
+  fd.append('compartment_ocid', document.getElementById('credCompartment').value);
+  fd.append('key_file', file);
+  try {
+    const r = await fetch('/api/credentials', { method: 'POST', headers: authHeaders(), body: fd });
+    const text = await r.text();
+    let data; try { data = JSON.parse(text); } catch { data = { raw: text }; }
+    if (!r.ok) throw new Error(data.detail || text);
+    document.getElementById('credResult').textContent = '已保存：' + data.name + (data.is_active ? '（已是当前生效）' : '');
+    document.getElementById('credKeyFile').value = '';
+    loadCredentials();
+  } catch (e) { document.getElementById('credResult').textContent = '错误：' + e.message; }
+}
+async function activateCredential(id) {
+  await api(`/api/credentials/${id}/activate`, 'POST', {});
+  loadCredentials(); loadInstances();
+}
+async function testCredential(id) {
+  try {
+    const r = await api(`/api/credentials/${id}/test`, 'POST', {});
+    document.getElementById('credResult').textContent = (r.ok ? '测试通过：' : '测试未通过：') + r.detail;
+  } catch (e) { document.getElementById('credResult').textContent = '错误：' + e.message; }
+}
+async function deleteCredential(id, name) {
+  if (!confirm('确定删除密钥“' + name + '”吗？私钥文件会一并删掉，此操作不可撤销。')) return;
+  await api(`/api/credentials/${id}`, 'DELETE');
+  loadCredentials();
 }
 async function loadInstances() {
   try {
