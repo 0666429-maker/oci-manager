@@ -12,11 +12,41 @@ from ..utils import paginate, require_confirm, to_dict
 
 
 def list_compartments(compartment_id=None):
+    """列出 compartment：不传值时以租户为根自动获取，并把根 compartment
+    本身放在第一项，方便创建实例时直接选“根 compartment”。"""
     c = clients()
-    root = c.compartment(compartment_id)
-    return [to_dict(x) for x in paginate(
-        c.identity.list_compartments, compartment_id=root, compartment_id_in_subtree=True
-    )]
+    cid = (compartment_id or "").strip()
+    auto_root = False
+    if cid and not c._is_placeholder(cid):
+        root = cid
+    elif c.default_compartment_id():
+        root = c.default_compartment_id()
+    else:
+        root = c.tenancy_id()
+        auto_root = True
+    if not root:
+        raise ValueError(
+            "无法列出 compartment：没有租户 OCID，"
+            "请确认当前 profile / .env 里填了 OCI_TENANCY_OCID"
+        )
+    try:
+        result = [to_dict(x) for x in paginate(
+            c.identity.list_compartments, compartment_id=root, compartment_id_in_subtree=True
+        )]
+    except Exception as exc:
+        raise ValueError(
+            "列出 compartment 失败："
+            f"{exc}。请检查当前密钥是否有列出 compartment 的权限，"
+            "或手动填一个 compartment OCID"
+        ) from exc
+    if auto_root:
+        result = [{
+            "id": root,
+            "name": "根 compartment（租户）",
+            "lifecycle_state": "ACTIVE",
+            "description": "租户根 compartment，实例可直接建在这里",
+        }] + [x for x in result if x.get("id") != root]
+    return result
 
 
 def list_availability_domains(compartment_id=None):
