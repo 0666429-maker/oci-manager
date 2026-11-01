@@ -56,6 +56,19 @@ cp .env.example .env   # 填 OCI 密钥、面板账号，务必改掉默认值
   文件上传保存。能存多条，点“切换到这条”立即生效，不用重启服务；
   每条的私钥单独存在 VPS 的 `data/keys/` 里（仅自己可读），列表里
   只显示 OCID 打码后的头尾，不能从网页下载或查看私钥原文。
+- **Compartment 不用手动填**：实例列表不选 compartment 时，面板自动以
+  租户为根列出全部 compartment 再汇总实例；实例页有 compartment 下拉
+  框可筛选，创建实例页也有 compartment 下拉框可选（默认第一项是根
+  compartment）。显式填了 compartment 或配了默认值时，仍只查那一个。
+  `.env` 里 `OCI_COMPARTMENT_OCID` 如果还是示例占位值 `xxxx`，会被
+  当作没填处理，不会再报 Invalid compartmentId。
+- **创建实例快捷预设**：ARM A1 有两档，4核24G（免费额度上限）和
+  2核12G（免费额度的一半，还能再开一台 2核12G）。
+- **root 密码登录（可选）**：创建实例页勾选“开启 root 密码登录”并填
+  root 密码（至少 8 位）后，创建时通过 cloud-init 设置 root 密码哈希、
+  开启 SSH 密码登录并允许 root 登录；密码只算哈希、不存明文，创建后
+  不存在面板里。公网 root 密码登录有被爆破的风险，能用密钥登录时
+  优先用密钥，密码登录只在确实需要时开。
 - 兼容旧方式：没有激活任何一条网页密钥时，仍按 `.env` 里的
   `OCI_USER_OCID / OCI_TENANCY_OCID / OCI_FINGERPRINT /
   OCI_PRIVATE_KEY_PATH / OCI_REGION`，或标准 `~/.oci/config` 文件工作。
