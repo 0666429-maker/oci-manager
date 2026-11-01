@@ -16,6 +16,13 @@ class OciClients:
     def __init__(self) -> None:
         self._config: dict | None = None
 
+    def reset(self) -> None:
+        """切换 / 删除 profile 后调用：下一次调用重新读配置、重建客户端。"""
+        self._config = None
+        for attr in ("compute", "network", "blockstorage", "identity",
+                     "object_storage", "monitoring", "limits"):
+            self.__dict__.pop(attr, None)
+
     @property
     def config(self) -> dict:
         if self._config is None:
@@ -82,11 +89,19 @@ class OciClients:
         return oci.limits.LimitsClient(self.config)
 
     def compartment(self, compartment_id: str | None) -> str:
-        """调用方没传 compartment 时，优先用环境变量里的默认值。"""
-        cid = (compartment_id or settings.compartment_id or "").strip()
+        """调用方没传 compartment 时：激活的 profile > 环境变量默认值。"""
+        profile_cid = ""
+        try:
+            from .credentials import active_compartment_id
+
+            profile_cid = active_compartment_id()
+        except Exception:
+            profile_cid = ""
+        cid = (compartment_id or profile_cid or settings.compartment_id or "").strip()
         if not cid:
             raise ValueError(
                 "缺少 compartment_id：请在请求里传 compartment_id，"
+                "或在密钥管理里给当前 profile 填默认 compartment，"
                 "或在 .env 里设置 OCI_COMPARTMENT_OCID"
             )
         return cid
