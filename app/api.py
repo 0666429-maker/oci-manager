@@ -25,7 +25,7 @@ from .services import network as net
 from .services import storage as store
 from .services import volumes as vol
 
-app = FastAPI(title="oci-manager", version="0.3.0")
+app = FastAPI(title="oci-manager", version="0.3.1")
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 
 
@@ -60,7 +60,7 @@ async def _generic_handler(request: Request, exc: Exception):
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "version": "0.3.0", "panel_auth": bool(settings.panel_username)}
+    return {"ok": True, "version": "0.3.1", "panel_auth": bool(settings.panel_username)}
 
 
 # ---------- 实例 ----------
