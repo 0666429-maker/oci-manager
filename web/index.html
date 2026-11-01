@@ -24,6 +24,7 @@
   <button onclick="showTab('network')">IP / 网络</button>
   <button onclick="showTab('volumes')">磁盘</button>
   <button onclick="showTab('storage')">对象存储</button>
+  <button onclick="showTab('credentials')">密钥管理</button>
   <button onclick="showTab('ssh')">Web SSH</button>
 </nav>
 
@@ -64,6 +65,25 @@
 <section id="tab-storage" class="tab hidden">
   <button onclick="loadBuckets()">刷新 Bucket</button>
   <pre id="bucketResult"></pre>
+</section>
+
+<section id="tab-credentials" class="tab hidden">
+  <h2>OCI 密钥管理</h2>
+  <p class="hint">在这里上传多条甲骨文密钥，统一管理、随时切换当前生效的一条。私钥只存在这台 VPS 的 data/keys/ 里（仅自己可读），不会进 Git，也不能从网页下载或查看原文。切换后立即生效，不用重启服务。没有激活任何一条时，面板仍按原来的 .env / ~/.oci/config 工作。</p>
+  <h3>上传一条新密钥</h3>
+  <label>名字 <input id="credName" placeholder="例如：主号、小号1"></label>
+  <label>用户 OCID <input id="credUser" placeholder="ocid1.user.oc1.."></label>
+  <label>租户 OCID <input id="credTenancy" placeholder="ocid1.tenancy.oc1.."></label>
+  <label>指纹 <input id="credFingerprint" placeholder="aa:bb:cc:…（16 组，冒号分隔）"></label>
+  <label>区域 <input id="credRegion" placeholder="例如 ap-singapore-1"></label>
+  <label>默认 Compartment OCID（可选） <input id="credCompartment" placeholder="ocid1.compartment.oc1.."></label>
+  <label>私钥文件（.pem） <input id="credKeyFile" type="file" accept=".pem"></label>
+  <button onclick="uploadCredential()">上传并保存</button>
+  <pre id="credResult"></pre>
+  <h3>已保存的密钥</h3>
+  <button onclick="loadCredentials()">刷新列表</button>
+  <table><thead><tr><th>名字</th><th>区域</th><th>用户 OCID</th><th>指纹</th><th>状态</th><th>操作</th></tr></thead>
+  <tbody id="credRows"></tbody></table>
 </section>
 
 <section id="tab-ssh" class="tab hidden">
